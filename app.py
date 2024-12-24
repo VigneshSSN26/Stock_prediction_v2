@@ -3,92 +3,112 @@ from flask_cors import CORS
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import torch
+import torch.nn as nn
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dropout, Dense
 
 app = Flask(__name__)
 CORS(app)
 
-# API to fetch stock data
-@app.route('/stock-data', methods=['GET'])
-def get_stock_data():
-    try:
-        ticker = request.args.get('ticker', 'RELIANCE.NS')
-        data = yf.download(tickers=ticker, period='1mo', interval='1d')
-        data.reset_index(inplace=True)
-        data['Date'] = data['Date'].astype(str)  # Convert to string for JSON serialization
-        return jsonify(data.to_dict(orient='records'))
-    except Exception as e:
-        return jsonify({'error': str(e)})
+# Define the LSTM model
+class LSTM(nn.Module):
+    def __init__(self, input_size=1, hidden_size=50, output_size=1):
+        super(LSTM, self).__init__()
+        self.hidden_size = hidden_size
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+    
+    def forward(self, x):
+        batch_size = x.size(0)
+        h_0 = torch.zeros(1, batch_size, self.hidden_size).to(x.device)
+        c_0 = torch.zeros(1, batch_size, self.hidden_size).to(x.device)
+        
+        out, _ = self.lstm(x, (h_0, c_0))
+        out = self.fc(out[:, -1, :])  # Only consider the last time step output
+        return out
 
-# API for predictions
+# Load and prepare the stock data
+def get_stock_data(ticker, period='6mo'):
+    data = yf.download(tickers=ticker, period=period, interval='1d')
+    data = data[['Close']].dropna()
+    return data
+
+# Prepare data for LSTM
+def prepare_data(data, sequence_length=50):
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(data.values)
+    
+    X, y = [], []
+    for i in range(sequence_length, len(scaled_data)):
+        X.append(scaled_data[i-sequence_length:i, 0])
+        y.append(scaled_data[i, 0])
+    
+    X = np.array(X)
+    y = np.array(y)
+    
+    # Reshape X to 3D: (samples, sequence_length, input_size)
+    X = np.expand_dims(X, axis=2)  # Adding input_size dimension (1)
+    return X, y, scaler
+
+# Train the LSTM model
+def train_model(X_train, y_train, input_size=1, hidden_size=50, epochs=50, lr=0.001):
+    model = LSTM(input_size=input_size, hidden_size=hidden_size)
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    
+    # Convert to tensors
+    X_train = torch.tensor(X_train, dtype=torch.float32)  # (batch_size, seq_length, input_size)
+    y_train = torch.tensor(y_train, dtype=torch.float32)  # (batch_size,)
+    
+    for epoch in range(epochs):
+        model.train()
+        optimizer.zero_grad()
+        outputs = model(X_train)
+        loss = criterion(outputs.squeeze(), y_train)
+        loss.backward()
+        optimizer.step()
+    
+    return model
+
 @app.route('/predict', methods=['POST'])
 def predict():
-    print("Predict route hit")
     try:
         # Parse request data
         request_data = request.json
-        ticker = request_data['ticker'].upper()
+        ticker = request_data['ticker'].upper() + ".NS"  # Add ".NS" to ensure correct symbol
         days = int(request_data['days'])
-        period = request_data.get('period', '6mo')  # Default to '6mo' if not provided
-
-        # Fetch historical data based on 'period'
-        df = yf.download(tickers=f"{ticker}.NS", period=period, interval='1d')
-        if df.empty:
-            return jsonify({'error': 'No data found for this ticker'})
-
-        # Check if 'Adj Close' exists, otherwise use 'Close'
-        price_column = 'Adj Close' if 'Adj Close' in df.columns else 'Close'
-
-        # Prepare data for LSTM
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        df[price_column] = scaler.fit_transform(df[[price_column]])
-        data = df[price_column].values
-
-        look_back = 60  # Number of previous days to consider for each prediction
-        X = []
-        for i in range(look_back, len(data)):
-            X.append(data[i - look_back:i])
-
-        X = np.array(X)
-        X = np.reshape(X, (X.shape[0], X.shape[1], 1))  # Single feature (Adj Close or Close)
-
-        if X.shape[0] < 1:
-            return jsonify({'error': 'Not enough data for prediction'})
-
-        # Define the LSTM model
-        model = Sequential([
-            LSTM(units=50, return_sequences=True, input_shape=(X.shape[1], 1)),
-            Dropout(0.2),
-            LSTM(units=50, return_sequences=False),
-            Dropout(0.2),
-            Dense(units=1)
-        ])
-        model.compile(optimizer='adam', loss='mean_squared_error')
-
-        # Train with dummy data (replace with saved model in production)
-        model.fit(X, X[:, -1], epochs=1, batch_size=32, verbose=0)
-
-        # Predict future prices for the 'days' requested
-        future_prices = []
-        last_input = X[-1].reshape(1, look_back, X.shape[2])  # The last available input
-
+        period = request_data.get('period', '6mo')
+        
+        # Get and preprocess stock data
+        data = get_stock_data(ticker, period)
+        X, y, scaler = prepare_data(data)
+        
+        # Split into train and test
+        train_size = int(len(X) * 0.8)
+        X_train, y_train = X[:train_size], y[:train_size]
+        X_test = X[train_size:]
+        
+        # Train the LSTM model
+        model = train_model(X_train, y_train)
+        model.eval()
+        
+        # Predict the future days
+        last_sequence = torch.tensor(X_test[-1:], dtype=torch.float32)  # (1, seq_length, input_size)
+        predictions = []
         for _ in range(days):
-            prediction = model.predict(last_input)  # Predict next value (shape: (1, 1))
-            
-            # Append the predicted value to future prices
-            future_prices.append(scaler.inverse_transform(prediction).tolist()[0][0])
-
-            # Create a new input with the same feature dimensions
-            next_input = np.zeros((1, 1, last_input.shape[2]))  # Shape: (1, 1, features)
-            next_input[0, 0, 0] = prediction[0][0]  # Replace index 0 with the predicted value
-            
-            # Update last input for the next prediction
-            last_input = np.append(last_input[:, 1:, :], next_input, axis=1)
-
-        return jsonify({'future_prices': future_prices})
-
+            with torch.no_grad():
+                next_pred = model(last_sequence)  # Predict next step
+                predictions.append(next_pred.item())
+                
+                # Update the sequence for the next prediction
+                next_pred_scaled = next_pred.unsqueeze(-1)  # Ensure next_pred is shaped (1, 1, 1)
+                # Remove the first element of last_sequence and add next_pred
+                last_sequence = torch.cat((last_sequence[:, 1:, :], next_pred_scaled), dim=1)
+        
+        # Transform predictions back to original scale
+        predictions = scaler.inverse_transform(np.array(predictions).reshape(-1, 1)).flatten()
+        return jsonify({'predictions': predictions.tolist()})
+    
     except Exception as e:
         return jsonify({'error': str(e)})
 
