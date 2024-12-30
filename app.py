@@ -6,32 +6,61 @@ import numpy as np
 import torch
 import torch.nn as nn
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
+import requests
 
 app = Flask(__name__)
 CORS(app)
 
-# Define the LSTM model
-class LSTM(nn.Module):
-    def __init__(self, input_size=1, hidden_size=50, output_size=1, bidirectional=False, dropout=0.2):
-        super(LSTM, self).__init__()
-        self.hidden_size = hidden_size
-        self.bidirectional = bidirectional
-        self.num_directions = 2 if bidirectional else 1
-        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True, bidirectional=bidirectional)
-        self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(hidden_size * self.num_directions, output_size)
-    
-    def forward(self, x):
-        batch_size = x.size(0)
-        h_0 = torch.zeros(self.num_directions, batch_size, self.hidden_size).to(x.device)
-        c_0 = torch.zeros(self.num_directions, batch_size, self.hidden_size).to(x.device)
-        
-        out, _ = self.lstm(x, (h_0, c_0))
-        out = self.fc(self.dropout(out[:, -1, :]))  # Only consider the last time step
-        return out
+ALPHA_VANTAGE_API_KEY = "7ZWGJ9RC72KQNHH6"
 
-# Load and prepare the stock data
+@app.route('/predict_stock', methods=['POST'])
+def predict_stock():
+    try:
+        # Parse request data
+        request_data = request.json
+        ticker = request_data['ticker'].upper() + ".NS"
+        days = int(request_data['days'])
+        period = request_data.get('period', 'max')
+        
+        # Get and preprocess stock data
+        data = get_stock_data(ticker, period)
+        X, y, scaler = prepare_data(data)
+        
+        # Split into train, validation, and test
+        train_size = int(len(X) * 0.7)
+        val_size = int(len(X) * 0.2)
+        X_train, y_train = X[:train_size], y[:train_size]
+        X_val, y_val = X[train_size:train_size + val_size], y[train_size:train_size + val_size]
+        X_test = X[train_size + val_size:]
+        
+        # Train the LSTM model
+        model = train_model(X_train, y_train, bidirectional=True)
+        model.eval()
+        
+        # Predict the future days
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        last_sequence = torch.tensor(X_test[-1:], dtype=torch.float32).to(device)
+        predictions = []
+        for _ in range(days):
+            with torch.no_grad():
+                next_pred = model(last_sequence)
+                predictions.append(next_pred.item())
+                
+                # Update the sequence for the next prediction
+                next_pred_scaled = next_pred.unsqueeze(-1)
+                last_sequence = torch.cat((last_sequence[:, 1:, :], next_pred_scaled), dim=1)
+        
+        # Transform predictions back to original scale
+        predictions = scaler.inverse_transform(np.array(predictions).reshape(-1, 1)).flatten()
+        return jsonify({'predictions': predictions.tolist()})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+# Fetch and prepare stock data for LSTM prediction
 def get_stock_data(ticker, period='max'):
     try:
         data = yf.download(tickers=ticker, period=period, interval='1d')
@@ -42,7 +71,7 @@ def get_stock_data(ticker, period='max'):
     except Exception as e:
         raise ValueError(f"Error fetching stock data: {e}")
 
-# Prepare data for LSTM
+# Prepare data for LSTM model
 def prepare_data(data, sequence_length=50):
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(data.values)
@@ -88,49 +117,25 @@ def train_model(X_train, y_train, input_size=1, hidden_size=50, epochs=50, lr=0.
     
     return model
 
-@app.route('/predict3', methods=['POST'])
-def predict():
-    try:
-        # Parse request data
-        request_data = request.json
-        ticker = request_data['ticker'].upper() + ".NS"
-        days = int(request_data['days'])
-        period = request_data.get('period', '6mo')
-        
-        # Get and preprocess stock data
-        data = get_stock_data(ticker, period)
-        X, y, scaler = prepare_data(data)
-        
-        # Split into train, validation, and test
-        train_size = int(len(X) * 0.7)
-        val_size = int(len(X) * 0.2)
-        X_train, y_train = X[:train_size], y[:train_size]
-        X_val, y_val = X[train_size:train_size + val_size], y[train_size:train_size + val_size]
-        X_test = X[train_size + val_size:]
-        
-        # Train the LSTM model
-        model = train_model(X_train, y_train, bidirectional=True)
-        model.eval()
-        
-        # Predict the future days
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        last_sequence = torch.tensor(X_test[-1:], dtype=torch.float32).to(device)
-        predictions = []
-        for _ in range(days):
-            with torch.no_grad():
-                next_pred = model(last_sequence)
-                predictions.append(next_pred.item())
-                
-                # Update the sequence for the next prediction
-                next_pred_scaled = next_pred.unsqueeze(-1)
-                last_sequence = torch.cat((last_sequence[:, 1:, :], next_pred_scaled), dim=1)
-        
-        # Transform predictions back to original scale
-        predictions = scaler.inverse_transform(np.array(predictions).reshape(-1, 1)).flatten()
-        return jsonify({'predictions': predictions.tolist()})
+# Define the LSTM model
+class LSTM(nn.Module):
+    def __init__(self, input_size=1, hidden_size=50, output_size=1, bidirectional=False, dropout=0.2):
+        super(LSTM, self).__init__()
+        self.hidden_size = hidden_size
+        self.bidirectional = bidirectional
+        self.num_directions = 2 if bidirectional else 1
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True, bidirectional=bidirectional)
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(hidden_size * self.num_directions, output_size)
     
-    except Exception as e:
-        return jsonify({'error': str(e)})
+    def forward(self, x):
+        batch_size = x.size(0)
+        h_0 = torch.zeros(self.num_directions, batch_size, self.hidden_size).to(x.device)
+        c_0 = torch.zeros(self.num_directions, batch_size, self.hidden_size).to(x.device)
+        
+        out, _ = self.lstm(x, (h_0, c_0))
+        out = self.fc(self.dropout(out[:, -1, :]))  # Only consider the last time step
+        return out
 
 if __name__ == '__main__':
     app.run(debug=True)
