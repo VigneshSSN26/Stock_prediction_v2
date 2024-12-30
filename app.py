@@ -6,32 +6,41 @@ import numpy as np
 import torch
 import torch.nn as nn
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 app = Flask(__name__)
 CORS(app)
 
 # Define the LSTM model
 class LSTM(nn.Module):
-    def __init__(self, input_size=1, hidden_size=50, output_size=1):
+    def __init__(self, input_size=1, hidden_size=50, output_size=1, bidirectional=False, dropout=0.2):
         super(LSTM, self).__init__()
         self.hidden_size = hidden_size
-        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
-        self.fc = nn.Linear(hidden_size, output_size)
+        self.bidirectional = bidirectional
+        self.num_directions = 2 if bidirectional else 1
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True, bidirectional=bidirectional)
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(hidden_size * self.num_directions, output_size)
     
     def forward(self, x):
         batch_size = x.size(0)
-        h_0 = torch.zeros(1, batch_size, self.hidden_size).to(x.device)
-        c_0 = torch.zeros(1, batch_size, self.hidden_size).to(x.device)
+        h_0 = torch.zeros(self.num_directions, batch_size, self.hidden_size).to(x.device)
+        c_0 = torch.zeros(self.num_directions, batch_size, self.hidden_size).to(x.device)
         
         out, _ = self.lstm(x, (h_0, c_0))
-        out = self.fc(out[:, -1, :])  # Only consider the last time step output
+        out = self.fc(self.dropout(out[:, -1, :]))  # Only consider the last time step
         return out
 
 # Load and prepare the stock data
-def get_stock_data(ticker, period='6mo'):
-    data = yf.download(tickers=ticker, period=period, interval='1d')
-    data = data[['Close']].dropna()
-    return data
+def get_stock_data(ticker, period='max'):
+    try:
+        data = yf.download(tickers=ticker, period=period, interval='1d')
+        data = data[['Close']].dropna()
+        if data.empty:
+            raise ValueError("No data found for the specified ticker.")
+        return data
+    except Exception as e:
+        raise ValueError(f"Error fetching stock data: {e}")
 
 # Prepare data for LSTM
 def prepare_data(data, sequence_length=50):
@@ -47,35 +56,44 @@ def prepare_data(data, sequence_length=50):
     y = np.array(y)
     
     # Reshape X to 3D: (samples, sequence_length, input_size)
-    X = np.expand_dims(X, axis=2)  # Adding input_size dimension (1)
+    X = np.expand_dims(X, axis=2)
     return X, y, scaler
 
 # Train the LSTM model
-def train_model(X_train, y_train, input_size=1, hidden_size=50, epochs=50, lr=0.001):
-    model = LSTM(input_size=input_size, hidden_size=hidden_size)
+def train_model(X_train, y_train, input_size=1, hidden_size=50, epochs=50, lr=0.001, batch_size=32, bidirectional=False):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = LSTM(input_size=input_size, hidden_size=hidden_size, bidirectional=bidirectional).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     
     # Convert to tensors
-    X_train = torch.tensor(X_train, dtype=torch.float32)  # (batch_size, seq_length, input_size)
-    y_train = torch.tensor(y_train, dtype=torch.float32)  # (batch_size,)
+    X_train = torch.tensor(X_train, dtype=torch.float32).to(device)
+    y_train = torch.tensor(y_train, dtype=torch.float32).to(device)
+    
+    dataset = torch.utils.data.TensorDataset(X_train, y_train)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
     
     for epoch in range(epochs):
         model.train()
-        optimizer.zero_grad()
-        outputs = model(X_train)
-        loss = criterion(outputs.squeeze(), y_train)
-        loss.backward()
-        optimizer.step()
+        epoch_loss = 0
+        for X_batch, y_batch in dataloader:
+            optimizer.zero_grad()
+            outputs = model(X_batch)
+            loss = criterion(outputs.squeeze(), y_batch)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+        
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss/len(dataloader):.4f}")
     
     return model
 
-@app.route('/predict', methods=['POST'])
+@app.route('/predict3', methods=['POST'])
 def predict():
     try:
         # Parse request data
         request_data = request.json
-        ticker = request_data['ticker'].upper() + ".NS"  # Add ".NS" to ensure correct symbol
+        ticker = request_data['ticker'].upper() + ".NS"
         days = int(request_data['days'])
         period = request_data.get('period', '6mo')
         
@@ -83,26 +101,28 @@ def predict():
         data = get_stock_data(ticker, period)
         X, y, scaler = prepare_data(data)
         
-        # Split into train and test
-        train_size = int(len(X) * 0.8)
+        # Split into train, validation, and test
+        train_size = int(len(X) * 0.7)
+        val_size = int(len(X) * 0.2)
         X_train, y_train = X[:train_size], y[:train_size]
-        X_test = X[train_size:]
+        X_val, y_val = X[train_size:train_size + val_size], y[train_size:train_size + val_size]
+        X_test = X[train_size + val_size:]
         
         # Train the LSTM model
-        model = train_model(X_train, y_train)
+        model = train_model(X_train, y_train, bidirectional=True)
         model.eval()
         
         # Predict the future days
-        last_sequence = torch.tensor(X_test[-1:], dtype=torch.float32)  # (1, seq_length, input_size)
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        last_sequence = torch.tensor(X_test[-1:], dtype=torch.float32).to(device)
         predictions = []
         for _ in range(days):
             with torch.no_grad():
-                next_pred = model(last_sequence)  # Predict next step
+                next_pred = model(last_sequence)
                 predictions.append(next_pred.item())
                 
                 # Update the sequence for the next prediction
-                next_pred_scaled = next_pred.unsqueeze(-1)  # Ensure next_pred is shaped (1, 1, 1)
-                # Remove the first element of last_sequence and add next_pred
+                next_pred_scaled = next_pred.unsqueeze(-1)
                 last_sequence = torch.cat((last_sequence[:, 1:, :], next_pred_scaled), dim=1)
         
         # Transform predictions back to original scale
