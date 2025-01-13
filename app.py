@@ -59,7 +59,7 @@ def prepare_data(data,prediction_horizon, sequence_length=75):
     return X, y, scaler
 
 # Train the LSTM model
-def train_model(X, y, input_size=1, hidden_size=150, output_size=1, epochs=75, lr=0.001, batch_size=32, bidirectional=True):
+def train_model(X, y, input_size=1, hidden_size=150, output_size=1, epochs=75, lr=0.01, batch_size=32, bidirectional=True):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = LSTM(input_size=input_size, hidden_size=hidden_size, output_size=output_size, bidirectional=bidirectional).to(device)
     criterion = weighted_loss
@@ -108,7 +108,7 @@ def sliding_window_prediction(model, X_input, days, scaler):
     return scaler.inverse_transform(predictions.reshape(-1, 1)).flatten().tolist()
 
 # Weighted loss function
-def weighted_loss(predictions, targets, weight_decay=0.001):
+def weighted_loss(predictions, targets, weight_decay=0.0001):
     weights = torch.tensor([weight_decay ** i for i in range(targets.size(1))]).to(targets.device)
     loss = torch.mean((predictions - targets) ** 2 * weights)
     return loss
