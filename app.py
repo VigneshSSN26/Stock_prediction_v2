@@ -9,105 +9,77 @@ from sklearn.preprocessing import MinMaxScaler
 app = Flask(__name__)
 CORS(app)
 
-ALPHA_VANTAGE_API_KEY = "7ZWGJ9RC72KQNHH6"
-
-# Route for predicting stock prices
 @app.route('/predict_stock', methods=['POST'])
 def predict_stock():
     try:
         request_data = request.json
         ticker = request_data['ticker'].upper() + ".NS"
-        days = int(request_data['days'])  # Prediction horizon
+        days = int(request_data['days'])  # Days to predict
         period = request_data.get('period', 'max')
-        
-        # Fetch stock data
+
+        # Get and preprocess stock data
         data = get_stock_data(ticker, period)
-        
-        # Prepare datasets for all features
-        X_open, _, scaler_open = prepare_multi_feature_data(data, 'Open', days)
-        X_high, _, scaler_high = prepare_multi_feature_data(data, 'High', days)
-        X_low, _, scaler_low = prepare_multi_feature_data(data, 'Low', days)
-        X_volume, _, scaler_volume = prepare_multi_feature_data(data, 'Volume', days)
-        
-        # Predict using LSTM models
-        pred_open = model_open(torch.tensor(X_open[-1:], dtype=torch.float32).to(device))
-        pred_high = model_high(torch.tensor(X_high[-1:], dtype=torch.float32).to(device))
-        pred_low = model_low(torch.tensor(X_low[-1:], dtype=torch.float32).to(device))
-        pred_volume = model_volume(torch.tensor(X_volume[-1:], dtype=torch.float32).to(device))
-        
-        # Consolidate predictions
-        pred_concat = torch.cat([pred_open, pred_high, pred_low, pred_volume], dim=1)
-        final_pred = consolidation_nn(pred_concat)
-        
-        # Inverse transform to original scale
-        predictions = scaler_open.inverse_transform(final_pred.cpu().detach().numpy())
-        return jsonify({'predictions': predictions.tolist()})
-    
+        models = {}
+        predictions = {}
+
+        # Dynamically use all available features in the stock data
+        features = data.columns.tolist()  # Automatically get all column names
+
+        for feature in features:
+            # Prepare data for the specific feature
+            X, y, scaler = prepare_data(data[[feature]], prediction_horizon=days)
+            
+            # Train the LSTM model for the specific feature
+            print(f"Training model for feature: {feature}")
+            model = train_model(X, y, output_size=days, bidirectional=True)
+            models[feature] = model
+
+            # Predict for the specific feature
+            feature_predictions = sliding_window_prediction(model, X[-1:], days, scaler)
+            predictions[feature] = feature_predictions
+
+        return jsonify({'predictions': predictions})
+
     except Exception as e:
         return jsonify({'error': str(e)})
 
 # Fetch stock data
 def get_stock_data(ticker, period='max'):
     data = yf.download(tickers=ticker, period=period, interval='1d')
+    data = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()  # Select only relevant columns
     if data.empty:
         raise ValueError("No data found for the specified ticker.")
     return data
 
-# Prepare data for each feature
-def prepare_multi_feature_data(data, feature_col, prediction_horizon, sequence_length=75):
+# Prepare data
+def prepare_data(data, prediction_horizon, sequence_length=75):
     scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(data[[feature_col]].values)
-    
+    scaled_data = scaler.fit_transform(data.values)
+
     X, y = [], []
     for i in range(sequence_length, len(scaled_data) - prediction_horizon + 1):
         X.append(scaled_data[i-sequence_length:i, 0])
         y.append(scaled_data[i:i+prediction_horizon, 0])
-    
+
     X = np.array(X)
     y = np.array(y)
     X = np.expand_dims(X, axis=2)  # Reshape to 3D
     return X, y, scaler
 
-# LSTM Model Definition
-class LSTM(nn.Module):
-    def __init__(self, input_size=1, hidden_size=150, output_size=1, bidirectional=True, dropout=0.1):
-        super(LSTM, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_directions = 2 if bidirectional else 1
-        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True, bidirectional=bidirectional)
-        self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(hidden_size * self.num_directions, output_size)
-    
-    def forward(self, x):
-        out, _ = self.lstm(x)
-        out = self.fc(out[:, -1, :])  # Use the last time step
-        return out
-
-# Consolidation Neural Network Definition
-class ConsolidationNN(nn.Module):
-    def __init__(self, input_size=4, hidden_size=64, output_size=1):
-        super(ConsolidationNN, self).__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_size, output_size)
-    
-    def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
-
-# Training function for LSTM models
-def train_model(X, y, input_size=1, hidden_size=150, output_size=1, epochs=75, lr=0.01, batch_size=32, bidirectional=True):
+# Train the LSTM model
+def train_model(X, y, input_size=1, hidden_size=100, output_size=1, epochs=50, lr=0.01, batch_size=32, bidirectional=True):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = LSTM(input_size=input_size, hidden_size=hidden_size, output_size=output_size, bidirectional=bidirectional).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    
+
+    # Convert to tensors
     X = torch.tensor(X, dtype=torch.float32).to(device)
     y = torch.tensor(y, dtype=torch.float32).to(device)
+
     dataset = torch.utils.data.TensorDataset(X, y)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
-    
+
     for epoch in range(epochs):
         model.train()
         epoch_loss = 0
@@ -118,25 +90,45 @@ def train_model(X, y, input_size=1, hidden_size=150, output_size=1, epochs=75, l
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
+
         print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss/len(dataloader):.4f}")
-    
+
     return model
 
-# Train and save models
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-data = get_stock_data('RELIANCE.NS', '1y')  # Example ticker and period
+# Iterative sliding window prediction
+def sliding_window_prediction(model, X_input, days, scaler):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    X_input = torch.tensor(X_input, dtype=torch.float32).to(device)
+    predictions = []
 
-X_open, y_open, _ = prepare_multi_feature_data(data, 'Open', 10)
-X_high, y_high, _ = prepare_multi_feature_data(data, 'High', 10)
-X_low, y_low, _ = prepare_multi_feature_data(data, 'Low', 10)
-X_volume, y_volume, _ = prepare_multi_feature_data(data, 'Volume', 10)
+    for _ in range(days):
+        with torch.no_grad():
+            pred = model(X_input)  # Predict one step ahead
+            predictions.append(pred.cpu().numpy().flatten()[0])  # Save the first (and only) value
 
-model_open = train_model(X_open, y_open)
-model_high = train_model(X_high, y_high)
-model_low = train_model(X_low, y_low)
-model_volume = train_model(X_volume, y_volume)
+            # Update the input with the new prediction
+            pred_scaled = pred.unsqueeze(-1)  # Expand dimensions to match input shape
+            X_input = torch.cat((X_input[:, 1:, :], pred_scaled), dim=1)  # Slide the window
 
-consolidation_nn = ConsolidationNN(input_size=4, hidden_size=64, output_size=10).to(device)
+    # Transform predictions back to original scale
+    predictions = np.array(predictions)
+    return scaler.inverse_transform(predictions.reshape(-1, 1)).flatten().tolist()
+
+# LSTM Model Definition
+class LSTM(nn.Module):
+    def __init__(self, input_size=1, hidden_size=150, output_size=1, bidirectional=True, dropout=0.1):
+        super(LSTM, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_directions = 2 if bidirectional else 1
+        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True, bidirectional=bidirectional)
+        self.dropout = nn.Dropout(dropout)
+        self.fc = nn.Linear(hidden_size * self.num_directions, output_size)
+
+    def forward(self, x):
+        out, _ = self.lstm(x)
+        out = self.fc(out[:, -1, :])  # Use the last time step
+        return out
 
 if __name__ == '__main__':
     app.run(debug=True)
