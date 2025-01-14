@@ -20,28 +20,33 @@ def predict_stock():
         # Get and preprocess stock data
         data = get_stock_data(ticker, period)
         models = {}
-        predictions = {}
+        lstm_predictions = []
 
-        # Dynamically use all available features in the stock data
         features = data.columns.tolist()  # Automatically get all column names
 
         for feature in features:
-            # Prepare data for the specific feature
             X, y, scaler = prepare_data(data[[feature]], prediction_horizon=days)
-            
-            # Train the LSTM model for the specific feature
             print(f"Training model for feature: {feature}")
             model = train_model(X, y, output_size=days, bidirectional=True)
             models[feature] = model
-
-            # Predict for the specific feature
             feature_predictions = sliding_window_prediction(model, X[-1:], days, scaler)
-            predictions[feature] = feature_predictions
+            lstm_predictions.append(feature_predictions)
 
-        return jsonify({'predictions': predictions})
+        # Consolidate predictions
+        all_predictions = np.stack(lstm_predictions, axis=1)
+        print(f"Consolidated predictions shape: {all_predictions.shape}")
+
+        # Neural Network Processing
+        neural_network = NeuralNetwork(input_size=len(features), hidden_size1=64, hidden_size2=32, output_size=1)
+        all_predictions_tensor = torch.tensor(all_predictions, dtype=torch.float32)
+        final_prediction = neural_network(all_predictions_tensor)
+
+        print(f"Final prediction output: {final_prediction}")
+        return jsonify({'final_prediction': final_prediction.tolist()})
 
     except Exception as e:
         return jsonify({'error': str(e)})
+
 
 # Fetch stock data
 def get_stock_data(ticker, period='max'):
@@ -114,6 +119,57 @@ def sliding_window_prediction(model, X_input, days, scaler):
     # Transform predictions back to original scale
     predictions = np.array(predictions)
     return scaler.inverse_transform(predictions.reshape(-1, 1)).flatten().tolist()
+
+# Neural Network to consolidate LSTM predictions
+class NeuralNetwork(nn.Module):
+    def __init__(self, input_size=5, hidden_size1=64, hidden_size2=32, output_size=1):
+        super(NeuralNetwork, self).__init__()
+        
+        # Define the layers
+        self.fc1 = nn.Linear(input_size, hidden_size1)  # From input_size (5) to hidden_size1 (64)
+        self.fc2 = nn.Linear(hidden_size1, hidden_size2)  # From hidden_size1 (64) to hidden_size2 (32)
+        self.fc3 = nn.Linear(hidden_size2, output_size)  # From hidden_size2 (32) to output_size (1)
+        
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))  # Apply ReLU activation on fc1
+        x = torch.relu(self.fc2(x))  # Apply ReLU activation on fc2
+        x = self.fc3(x)  # Output layer without activation (for regression)
+        return x
+
+# Prediction using the Neural Network
+def neural_network_prediction(lstm_predictions):
+    """
+    Predict the final price using the neural network based on LSTM predictions.
+    lstm_predictions is a list containing the predictions from each LSTM model for each feature.
+    """
+    model = NeuralNetwork(input_size=len(lstm_predictions))  # 5 inputs: Open, High, Low, Close, Volume
+    model = set_static_weights(model)  # Set static weights initially
+
+    # Convert LSTM predictions to tensor
+    lstm_predictions_tensor = torch.tensor(lstm_predictions, dtype=torch.float32).unsqueeze(0)  # Convert to batch format
+
+    # Get the final prediction from the neural network
+    final_prediction = model(lstm_predictions_tensor)
+
+    return final_prediction.item()  # Return the predicted value
+
+# Static weights for the neural network
+def set_static_weights(model):
+    with torch.no_grad():
+        # Set static weights and biases for fc1 layer
+        model.fc1.weight = torch.nn.Parameter(torch.tensor([[0.2] * 64] * 5, dtype=torch.float32))  # Static weights for fc1
+        model.fc1.bias = torch.nn.Parameter(torch.tensor([0.1] * 64, dtype=torch.float32))           # Static bias for fc1
+
+        # Set static weights and biases for fc2 layer
+        model.fc2.weight = torch.nn.Parameter(torch.tensor([[0.3] * 32] * 64, dtype=torch.float32))  # Static weights for fc2
+        model.fc2.bias = torch.nn.Parameter(torch.tensor([0.1] * 32, dtype=torch.float32))           # Static bias for fc2
+
+        # Set static weights and biases for fc3 layer (output layer)
+        model.fc3.weight = torch.nn.Parameter(torch.tensor([[0.4] * 1] * 32, dtype=torch.float32))   # Static weights for fc3
+        model.fc3.bias = torch.nn.Parameter(torch.tensor([0.5], dtype=torch.float32))                # Static bias for fc3
+
+    return model
+
 
 # LSTM Model Definition
 class LSTM(nn.Module):
