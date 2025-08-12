@@ -45,39 +45,39 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
     plugins: {
       legend: {
         position: 'top' as const,
-        labels: {
-          usePointStyle: true,
-          padding: 20,
-          font: {
-            family: 'Inter',
-            size: 12,
-            weight: '600'
-          }
-        }
+                 labels: {
+           usePointStyle: true,
+           padding: 20,
+           font: {
+             family: 'Inter',
+             size: 12,
+             weight: 600
+           }
+         }
       },
-      title: {
-        display: true,
-        text: `📈 ${symbol} Stock Price Prediction`,
-        font: {
-          family: 'Inter',
-          size: 18,
-          weight: '700'
-        },
-        color: '#2d3748'
-      },
+               title: {
+           display: true,
+           text: `📈 ${symbol} Stock Price Prediction`,
+           font: {
+             family: 'Inter',
+             size: 18,
+             weight: 700
+           },
+           color: '#2d3748'
+         },
     },
     scales: {
       x: {
-        title: {
-          display: true,
-          text: 'Date',
-          font: {
-            family: 'Inter',
-            size: 12,
-            weight: '600'
-          },
-          color: '#4a5568'
-        },
+                 title: {
+           display: true,
+           text: 'Date',
+           font: {
+             family: 'Inter',
+             size: 12,
+             weight: 600
+           },
+           color: '#4a5568'
+         },
         grid: {
           color: 'rgba(226, 232, 240, 0.5)',
           drawBorder: false
@@ -91,16 +91,16 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
         }
       },
       y: {
-        title: {
-          display: true,
-          text: 'Price ($)',
-          font: {
-            family: 'Inter',
-            size: 12,
-            weight: '600'
-          },
-          color: '#4a5568'
-        },
+                 title: {
+           display: true,
+           text: 'Price ($)',
+           font: {
+             family: 'Inter',
+             size: 12,
+             weight: 600
+           },
+           color: '#4a5568'
+         },
         grid: {
           color: 'rgba(226, 232, 240, 0.5)',
           drawBorder: false
