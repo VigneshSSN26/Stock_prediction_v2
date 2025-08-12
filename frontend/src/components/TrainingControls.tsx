@@ -14,8 +14,8 @@ export interface TrainingParams {
 
 const TrainingControls: React.FC<TrainingControlsProps> = ({ onTrain, isTraining }) => {
   const [params, setParams] = useState<TrainingParams>({
-    symbol: 'AAPL',
-    epochs: 50,
+    symbol: 'RELIANCE.NS',
+    epochs: 20,
     startDate: '',
     endDate: ''
   });
@@ -45,30 +45,33 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({ onTrain, isTraining
             id="symbol"
             value={params.symbol}
             onChange={(e) => handleInputChange('symbol', e.target.value)}
-            placeholder="e.g., AAPL"
+            placeholder="e.g., RELIANCE.NS, AAPL"
             required
           />
         </div>
 
         <div>
           <label htmlFor="epochs">
-            Epochs
+            Epochs (Training Iterations)
           </label>
           <input
             type="number"
             id="epochs"
             value={params.epochs}
             onChange={(e) => handleInputChange('epochs', parseInt(e.target.value))}
-            min="1"
-            max="200"
+            min="5"
+            max="100"
             required
           />
+          <small style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+            Higher epochs = better accuracy but longer training time
+          </small>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
             <label htmlFor="startDate">
-              Start Date
+              Start Date (Optional)
             </label>
             <input
               type="date"
@@ -76,11 +79,14 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({ onTrain, isTraining
               value={params.startDate}
               onChange={(e) => handleInputChange('startDate', e.target.value)}
             />
+            <small style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+              Leave empty for last 1 year
+            </small>
           </div>
 
           <div>
             <label htmlFor="endDate">
-              End Date
+              End Date (Optional)
             </label>
             <input
               type="date"
@@ -88,6 +94,9 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({ onTrain, isTraining
               value={params.endDate}
               onChange={(e) => handleInputChange('endDate', e.target.value)}
             />
+            <small style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+              Leave empty for current date
+            </small>
           </div>
         </div>
 
@@ -96,8 +105,15 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({ onTrain, isTraining
           disabled={isTraining}
           style={{ width: '100%', marginTop: '1rem' }}
         >
-          {isTraining ? 'Training...' : 'Train Model'}
+          {isTraining ? 'Training Model...' : 'Train Model'}
         </button>
+        
+        {isTraining && (
+          <div style={{ marginTop: '1rem', textAlign: 'center', color: '#6b7280' }}>
+            <p>⏳ Training in progress... This may take a few minutes.</p>
+            <p>Training LSTM models for each feature (Open, High, Low, Close, Volume)</p>
+          </div>
+        )}
       </form>
     </div>
   );

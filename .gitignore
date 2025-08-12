@@ -1,4 +1,0 @@
-# Ignore TensorFlow and large files
-flask-backend/Lib/site-packages/tensorflow/python/_pywrap_tensorflow_internal.pyd
-flask-backend/Lib/site-packages/clang/native/libclang.dll
-flask-backend/Lib/

@@ -6,7 +6,7 @@ import PredictionChart from './components/PredictionChart';
 import MetricsDisplay from './components/MetricsDisplay';
 import './App.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7860';
 
 interface HistoricalData {
   dates: string[];
@@ -23,20 +23,14 @@ interface PredictionData {
     [key: string]: number[];
   };
   dates: string[];
-  last_actual_date: string;
 }
 
 interface MetricsData {
-  symbol: string;
-  rmse: number;
-  mae: number;
-  accuracy: number;
-  training_loss: number;
-  validation_loss: number;
+  message: string;
 }
 
 function App() {
-  const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
+  const [selectedSymbol, setSelectedSymbol] = useState('RELIANCE.NS');
   const [historicalData, setHistoricalData] = useState<HistoricalData | null>(null);
   const [predictionData, setPredictionData] = useState<PredictionData | null>(null);
   const [metricsData, setMetricsData] = useState<MetricsData | null>(null);
@@ -57,8 +51,8 @@ function App() {
       setError(null);
       const response = await axios.get(`${API_BASE_URL}/api/history?symbol=${selectedSymbol}`);
       setHistoricalData(response.data);
-    } catch (err) {
-      setError('Failed to fetch historical data');
+    } catch (err: any) {
+      setError(`Failed to fetch historical data: ${err.response?.data?.error || err.message}`);
       console.error('Error fetching historical data:', err);
     } finally {
       setIsLoading(false);
@@ -70,7 +64,12 @@ function App() {
       setIsTraining(true);
       setError(null);
       
-      const response = await axios.post(`${API_BASE_URL}/api/train`, params);
+      const response = await axios.post(`${API_BASE_URL}/api/train`, {
+        symbol: params.symbol,
+        epochs: params.epochs,
+        start_date: params.startDate,
+        end_date: params.endDate
+      });
       console.log('Training completed:', response.data);
       
       // Fetch metrics after training
@@ -79,8 +78,8 @@ function App() {
       // Fetch predictions after training
       await fetchPredictions(params.symbol);
       
-    } catch (err) {
-      setError('Failed to train model');
+    } catch (err: any) {
+      setError(`Failed to train model: ${err.response?.data?.error || err.message}`);
       console.error('Error training model:', err);
     } finally {
       setIsTraining(false);
@@ -96,8 +95,8 @@ function App() {
         days: 30
       });
       setPredictionData(response.data);
-    } catch (err) {
-      setError('Failed to fetch predictions');
+    } catch (err: any) {
+      setError(`Failed to fetch predictions: ${err.response?.data?.error || err.message}`);
       console.error('Error fetching predictions:', err);
     } finally {
       setIsLoading(false);
@@ -108,7 +107,7 @@ function App() {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/metrics?symbol=${symbol}`);
       setMetricsData(response.data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching metrics:', err);
     }
   };
@@ -165,7 +164,7 @@ function App() {
               }}
               predictions={{
                 dates: predictionData.dates,
-                close: predictionData.predictions.Close || []
+                close: predictionData.predictions.final || predictionData.predictions.Close || []
               }}
               symbol={selectedSymbol}
             />
@@ -175,7 +174,13 @@ function App() {
         {metricsData && (
           <div>
             <MetricsDisplay
-              metrics={metricsData}
+              metrics={{
+                rmse: 0.0,
+                mae: 0.0,
+                accuracy: 0.0,
+                training_loss: 0.0,
+                validation_loss: 0.0
+              }}
               symbol={selectedSymbol}
             />
           </div>
@@ -189,6 +194,20 @@ function App() {
             <button onClick={() => fetchPredictions(selectedSymbol)}>
               Get Predictions
             </button>
+          </div>
+        )}
+
+        {predictionData && (
+          <div className="predictions-summary">
+            <h3>Prediction Summary for {selectedSymbol}</h3>
+            <div className="prediction-features">
+              {Object.keys(predictionData.predictions).map(feature => (
+                <div key={feature} className="feature-prediction">
+                  <h4>{feature}</h4>
+                  <p>Next 30 days: {predictionData.predictions[feature].slice(0, 5).map(v => v.toFixed(2)).join(', ')}...</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -9,11 +9,20 @@ const StockSelector: React.FC<StockSelectorProps> = ({ onSymbolChange, selectedS
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Common stock symbols (you can expand this list)
+  // Stock symbols that work with Alpha Vantage API
   const stockSymbols = [
+    // Indian Stocks (NSE)
+    'RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 
+    'HINDUNILVR.NS', 'ITC.NS', 'SBIN.NS', 'BHARTIARTL.NS', 'KOTAKBANK.NS',
+    'AXISBANK.NS', 'ASIANPAINT.NS', 'MARUTI.NS', 'HCLTECH.NS', 'SUNPHARMA.NS',
+    'WIPRO.NS', 'ULTRACEMCO.NS', 'TITAN.NS', 'BAJFINANCE.NS', 'NESTLEIND.NS',
+    
+    // US Stocks
     'AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA', 'META', 'NVDA', 'NFLX',
-    'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'HINDUNILVR',
-    'ITC', 'SBIN', 'BHARTIARTL', 'KOTAKBANK', 'AXISBANK', 'ASIANPAINT'
+    'JPM', 'JNJ', 'V', 'PG', 'UNH', 'HD', 'MA', 'DIS', 'PYPL', 'ADBE',
+    
+    // Simple symbols for testing
+    'RELIANCE', 'TCS', 'INFY', 'AAPL', 'GOOGL', 'MSFT'
   ];
 
   const filteredSymbols = stockSymbols.filter(symbol =>
@@ -38,7 +47,7 @@ const StockSelector: React.FC<StockSelectorProps> = ({ onSymbolChange, selectedS
           value={selectedSymbol}
           onChange={(e) => onSymbolChange(e.target.value)}
           onFocus={() => setIsOpen(true)}
-          placeholder="Enter stock symbol..."
+          placeholder="Enter stock symbol (e.g., RELIANCE.NS, AAPL)..."
         />
         
         {isOpen && (
@@ -85,6 +94,9 @@ const StockSelector: React.FC<StockSelectorProps> = ({ onSymbolChange, selectedS
           </div>
         )}
       </div>
+      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.5rem' }}>
+        💡 Tip: Use .NS suffix for Indian stocks (NSE), no suffix for US stocks
+      </p>
     </div>
   );
 };
