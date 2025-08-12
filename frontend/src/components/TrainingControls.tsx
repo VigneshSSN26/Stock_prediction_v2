@@ -34,7 +34,7 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({ onTrain, isTraining
 
   return (
     <div className="training-controls">
-      <h3>🚀 Model Training</h3>
+      <h3>Model Training</h3>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="symbol">
@@ -80,7 +80,7 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({ onTrain, isTraining
               onChange={(e) => handleInputChange('startDate', e.target.value)}
             />
             <small style={{ color: '#718096', fontSize: '0.875rem', display: 'block', marginTop: '0.5rem' }}>
-              📅 Leave empty for last 1 year
+               Leave empty for last 1 year
             </small>
           </div>
 
@@ -95,7 +95,7 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({ onTrain, isTraining
               onChange={(e) => handleInputChange('endDate', e.target.value)}
             />
             <small style={{ color: '#718096', fontSize: '0.875rem', display: 'block', marginTop: '0.5rem' }}>
-              📅 Leave empty for current date
+               Leave empty for current date
             </small>
           </div>
         </div>
@@ -105,7 +105,7 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({ onTrain, isTraining
           disabled={isTraining}
           style={{ width: '100%', marginTop: '1.5rem' }}
         >
-          {isTraining ? '⏳ Training Model...' : '🚀 Start Training'}
+          {isTraining ? ' Training Model...' : ' Start Training'}
         </button>
         
         {isTraining && (

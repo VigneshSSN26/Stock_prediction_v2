@@ -195,7 +195,7 @@ function App() {
       <div className="container">
         <header>
           <div className="logo-container">
-            <div className="logo">📈</div>
+            <div className="logo"></div>
             <div>
               <h1>StockAI Predictor</h1>
               <p>AI-powered stock price forecasting using advanced LSTM models</p>
