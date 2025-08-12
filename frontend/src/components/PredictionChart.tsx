@@ -41,13 +41,29 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
 }) => {
   const options: ChartOptions<'line'> = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            family: 'Inter',
+            size: 12,
+            weight: '600'
+          }
+        }
       },
       title: {
         display: true,
-        text: `${symbol} Stock Price Prediction`,
+        text: `📈 ${symbol} Stock Price Prediction`,
+        font: {
+          family: 'Inter',
+          size: 18,
+          weight: '700'
+        },
+        color: '#2d3748'
       },
     },
     scales: {
@@ -55,13 +71,47 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
         title: {
           display: true,
           text: 'Date',
+          font: {
+            family: 'Inter',
+            size: 12,
+            weight: '600'
+          },
+          color: '#4a5568'
         },
+        grid: {
+          color: 'rgba(226, 232, 240, 0.5)',
+          drawBorder: false
+        },
+        ticks: {
+          font: {
+            family: 'Inter',
+            size: 10
+          },
+          color: '#718096'
+        }
       },
       y: {
         title: {
           display: true,
           text: 'Price ($)',
+          font: {
+            family: 'Inter',
+            size: 12,
+            weight: '600'
+          },
+          color: '#4a5568'
         },
+        grid: {
+          color: 'rgba(226, 232, 240, 0.5)',
+          drawBorder: false
+        },
+        ticks: {
+          font: {
+            family: 'Inter',
+            size: 10
+          },
+          color: '#718096'
+        }
       },
     },
   };
@@ -70,27 +120,40 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
     labels: [...historicalData.dates, ...predictions.dates],
     datasets: [
       {
-        label: 'Historical Prices',
+        label: '📊 Historical Prices',
         data: historicalData.close,
-        borderColor: 'rgb(53, 162, 235)',
-        backgroundColor: 'rgba(53, 162, 235, 0.5)',
-        pointRadius: 2,
-        pointHoverRadius: 5,
+        borderColor: '#4ecdc4',
+        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+        borderWidth: 3,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#4ecdc4',
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 2,
+        tension: 0.4,
+        fill: true
       },
       {
-        label: 'Predicted Prices',
+        label: '🔮 Predicted Prices',
         data: [...Array(historicalData.close.length).fill(null), ...predictions.close],
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-        borderDash: [5, 5],
-        pointRadius: 3,
+        borderColor: '#667eea',
+        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        borderWidth: 3,
+        borderDash: [8, 4],
+        pointRadius: 0,
         pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#667eea',
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 2,
+        tension: 0.4,
+        fill: true
       },
     ],
   };
 
   return (
     <div className="prediction-chart">
+      <h3>📈 Price Prediction Chart</h3>
       <div className="chart-container">
         <Line options={options} data={data} />
       </div>

@@ -194,8 +194,13 @@ function App() {
     <div className="App">
       <div className="container">
         <header>
-          <h1>Stock Price Prediction</h1>
-          <p>AI-powered stock price forecasting using LSTM models</p>
+          <div className="logo-container">
+            <div className="logo">📈</div>
+            <div>
+              <h1>StockAI Predictor</h1>
+              <p>AI-powered stock price forecasting using advanced LSTM models</p>
+            </div>
+          </div>
         </header>
 
         {error && (
