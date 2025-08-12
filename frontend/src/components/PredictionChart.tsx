@@ -51,7 +51,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
           font: {
             family: 'Inter',
             size: 12,
-            weight: 600
+            weight: 'bold'
           }
         }
       },
@@ -61,7 +61,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
         font: {
           family: 'Inter',
           size: 18,
-          weight: 700
+          weight: 'bold'
         },
         color: '#2d3748'
       },
@@ -74,7 +74,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
           font: {
             family: 'Inter',
             size: 12,
-            weight: 600
+            weight: 'bold'
           },
           color: '#4a5568'
         },
@@ -97,7 +97,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
           font: {
             family: 'Inter',
             size: 12,
-            weight: 600
+            weight: 'bold'
           },
           color: '#4a5568'
         },
