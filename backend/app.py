@@ -89,6 +89,54 @@ def train_model():
         with open(scaler_filename, 'wb') as f:
             pickle.dump(scalers, f)
         
+        # Train the lightweight NeuralNetwork aggregator to predict next-day Close
+        try:
+            nn_model = NeuralNetwork(input_size=len(features), hidden_size1=64, hidden_size2=32, output_size=1)
+
+            # Build NN training dataset: inputs are scaled feature values at time t, target is scaled Close at time t+1
+            close_scaler = scalers['Close']
+            # Scale each feature column using its scaler
+            scaled_columns = {}
+            for feat in features:
+                values = data[[feat]].values
+                # Note: 'Volume' is already log1p-transformed above; scalers were fit on these values
+                scaled_columns[feat] = scalers[feat].fit_transform(values).flatten()
+
+            # Construct X (t) and y (t+1) in scaled space
+            min_len = min(len(scaled_columns[f]) for f in features)
+            X_nn = []
+            y_nn = []
+            for t in range(min_len - 1):
+                X_nn.append([scaled_columns[f][t] for f in features])
+                y_nn.append(close_scaler.transform([[data['Close'].values[t + 1]]])[0, 0])
+
+            if len(X_nn) >= 16:  # require some minimal samples
+                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                X_tensor = torch.tensor(np.array(X_nn), dtype=torch.float32).to(device)
+                y_tensor = torch.tensor(np.array(y_nn), dtype=torch.float32).unsqueeze(1).to(device)
+
+                criterion = nn.MSELoss()
+                optimizer = torch.optim.Adam(nn_model.parameters(), lr=0.001)
+                nn_model.to(device)
+                nn_epochs = max(10, int(epochs))  # tie to epochs param
+                nn_model.train()
+                for _ in range(nn_epochs):
+                    optimizer.zero_grad()
+                    out = nn_model(X_tensor)
+                    loss = criterion(out, y_tensor)
+                    loss.backward()
+                    optimizer.step()
+
+                # Save the trained NN model
+                nn_path = f"model/{symbol.replace('.', '_')}_nn.pt"
+                torch.save(nn_model.state_dict(), nn_path)
+            else:
+                # Not enough samples; skip training NN
+                pass
+        except Exception:
+            # NN training is optional; ignore errors to not block LSTM training API
+            pass
+
         return jsonify({
             'message': f'Models trained successfully for {symbol}',
             'symbol': symbol,
@@ -142,6 +190,43 @@ def predict():
                 )
                 predictions[feature] = feature_predictions
         
+        # Optionally produce consolidated 'final' Close prediction using trained NeuralNetwork
+        try:
+            nn_path = f"model/{symbol.replace('.', '_')}_nn.pt"
+            if os.path.exists(nn_path):
+                # Prepare NN inputs per day using scaled predicted features
+                nn_model = NeuralNetwork(input_size=len(features), hidden_size1=64, hidden_size2=32, output_size=1)
+                nn_model.load_state_dict(torch.load(nn_path, map_location='cpu'))
+                nn_model.eval()
+
+                # Build matrix of size (days, features) in scaled space
+                X_days = []
+                for i in range(days):
+                    feature_vector = []
+                    for feat in features:
+                        if feat in predictions:
+                            val = predictions[feat][i]
+                        else:
+                            # If a feature prediction is missing, backfill with last known value
+                            val = float(data[feat].iloc[-1])
+                        # Scale using the corresponding scaler; ensure 2D input
+                        scaler = scalers[feat]
+                        scaled_val = scaler.transform(np.array(val, ndmin=2).reshape(-1, 1))[0, 0]
+                        feature_vector.append(scaled_val)
+                    X_days.append(feature_vector)
+
+                X_tensor = torch.tensor(np.array(X_days), dtype=torch.float32)
+                with torch.no_grad():
+                    y_scaled = nn_model(X_tensor).numpy().reshape(-1, 1)
+
+                # Inverse scale using Close scaler
+                close_scaler = scalers['Close']
+                final_close = close_scaler.inverse_transform(y_scaled).flatten().tolist()
+                predictions['final'] = final_close
+        except Exception:
+            # If NN inference fails, fall back silently
+            pass
+
         # Generate future dates
         last_date = data.index[-1]
         future_dates = [last_date + timedelta(days=i+1) for i in range(days)]
@@ -251,6 +336,25 @@ def sliding_window_prediction(model, X_input, days, scaler):
     return scaler.inverse_transform(predictions.reshape(-1, 1)).flatten().tolist()
 
 # Model definitions
+class NeuralNetwork(nn.Module):
+    def __init__(self, input_size=5, hidden_size1=64, hidden_size2=32, output_size=1):
+        super(NeuralNetwork, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size1)
+        self.fc2 = nn.Linear(hidden_size1, hidden_size2)
+        self.fc3 = nn.Linear(hidden_size2, output_size)
+        self._init_weights()
+
+    def _init_weights(self):
+        nn.init.xavier_uniform_(self.fc1.weight); nn.init.zeros_(self.fc1.bias)
+        nn.init.xavier_uniform_(self.fc2.weight); nn.init.zeros_(self.fc2.bias)
+        nn.init.xavier_uniform_(self.fc3.weight); nn.init.zeros_(self.fc3.bias)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
 class LSTM(nn.Module):
     def __init__(self, input_size=1, hidden_size=150, output_size=1, bidirectional=True, dropout=0.1):
         super(LSTM, self).__init__()
