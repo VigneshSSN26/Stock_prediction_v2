@@ -8,7 +8,8 @@ import {
   Title,
   Tooltip,
   Legend,
-  ChartOptions
+  ChartOptions,
+  Filler // Import Filler for the 'fill' property
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 
@@ -19,7 +20,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler // Register the Filler plugin
 );
 
 interface PredictionChartProps {
@@ -49,7 +51,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
           usePointStyle: true,
           padding: 20,
           font: {
-            family: 'Inter',
+            family: 'Inter, sans-serif',
             size: 12,
             weight: 'bold'
           }
@@ -59,7 +61,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
         display: true,
         text: `📈 ${symbol} Stock Price Prediction`,
         font: {
-          family: 'Inter',
+          family: 'Inter, sans-serif',
           size: 18,
           weight: 'bold'
         },
@@ -72,19 +74,22 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
           display: true,
           text: 'Date',
           font: {
-            family: 'Inter',
+            family: 'Inter, sans-serif',
             size: 12,
             weight: 'bold'
           },
           color: '#4a5568'
         },
         grid: {
-          color: 'rgba(226, 232, 240, 0.5)',
-          drawBorder: false
+          color: 'rgba(226, 232, 240, 0.5)'
+          // drawBorder has been removed
+        },
+        border: { // Correct property for the axis line
+          display: false
         },
         ticks: {
           font: {
-            family: 'Inter',
+            family: 'Inter, sans-serif',
             size: 10
           },
           color: '#718096'
@@ -93,21 +98,24 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
       y: {
         title: {
           display: true,
-          text: 'Price ($)',
+          text: 'Price (₹)', // Assuming INR for Indian stocks
           font: {
-            family: 'Inter',
+            family: 'Inter, sans-serif',
             size: 12,
             weight: 'bold'
           },
           color: '#4a5568'
         },
         grid: {
-          color: 'rgba(226, 232, 240, 0.5)',
-          drawBorder: false
+          color: 'rgba(226, 232, 240, 0.5)'
+          // drawBorder has been removed
+        },
+        border: { // Correct property for the axis line
+          display: false
         },
         ticks: {
           font: {
-            family: 'Inter',
+            family: 'Inter, sans-serif',
             size: 10
           },
           color: '#718096'
@@ -124,7 +132,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
         data: historicalData.close,
         borderColor: '#4ecdc4',
         backgroundColor: 'rgba(78, 205, 196, 0.1)',
-        borderWidth: 3,
+        borderWidth: 2,
         pointRadius: 0,
         pointHoverRadius: 6,
         pointHoverBackgroundColor: '#4ecdc4',
@@ -138,7 +146,7 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
         data: [...Array(historicalData.close.length).fill(null), ...predictions.close],
         borderColor: '#667eea',
         backgroundColor: 'rgba(102, 126, 234, 0.1)',
-        borderWidth: 3,
+        borderWidth: 2,
         borderDash: [8, 4],
         pointRadius: 0,
         pointHoverRadius: 6,
@@ -152,9 +160,8 @@ const PredictionChart: React.FC<PredictionChartProps> = ({
   };
 
   return (
-    <div className="prediction-chart">
-      <h3>📈 Price Prediction Chart</h3>
-      <div className="chart-container">
+    <div style={{ padding: '20px', backgroundColor: '#f7fafc', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+      <div style={{ position: 'relative', height: '450px' }}>
         <Line options={options} data={data} />
       </div>
     </div>
