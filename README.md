@@ -1,90 +1,54 @@
-# Stock Price Prediction Project
+# Stock Price Prediction System
 
-A full-stack web application for stock price prediction using LSTM (Long Short-Term Memory) neural networks. The project consists of a Flask backend API and a React frontend.
+A complete full-stack application for stock price prediction using LSTM neural networks. The system consists of a Flask backend API and a React frontend.
 
 ## Project Structure
 
 ```
-Stock_prediction/
-├── backend/                 # Flask API backend
-│   ├── app.py              # Main Flask application
-│   ├── requirements.txt    # Python dependencies
-│   ├── model/             # Directory for saved models
-│   └── data/              # Directory for datasets
-├── frontend/               # React frontend
+Stock_prediction_v2/
+├── frontend/                 # React frontend application
 │   ├── src/
-│   │   ├── components/     # React components
+│   │   ├── components/       # React components
 │   │   │   ├── StockSelector.tsx
 │   │   │   ├── TrainingControls.tsx
 │   │   │   ├── PredictionChart.tsx
 │   │   │   └── MetricsDisplay.tsx
-│   │   ├── App.tsx         # Main App component
-│   │   └── App.css         # Styling
-│   ├── package.json        # Node.js dependencies
-│   └── .env               # Environment variables
-└── README.md              # This file
+│   │   ├── App.tsx          # Main App component
+│   │   └── App.css          # Styling
+│   ├── package.json         # Node.js dependencies
+│   └── .env                 # Environment variables
+└── README.md               # This file
+
+Stock_backend/               # Flask backend API
+├── app.py                  # Main Flask application
+├── requirements.txt        # Python dependencies
+├── run.py                 # Production server
+├── Procfile               # Deployment config
+├── model/                 # Saved models directory
+└── data/                  # Datasets directory
 ```
 
 ## Features
 
-- **Stock Data Retrieval**: Fetch historical stock data from Yahoo Finance
+- **Real-time Stock Data**: Fetch historical data from Alpha Vantage API
 - **LSTM Model Training**: Train custom LSTM models for stock prediction
-- **Real-time Predictions**: Get future stock price predictions
+- **Multi-feature Prediction**: Predict Open, High, Low, Close, and Volume
+- **Neural Network Aggregator**: Consolidated final predictions
 - **Interactive Charts**: Visualize historical data and predictions using Chart.js
-- **Performance Metrics**: Display RMSE, MAE, accuracy, and loss metrics
 - **Responsive UI**: Modern, responsive web interface
+- **Indian & US Stocks**: Support for both NSE and US markets
 
-## Backend API Endpoints
+## Backend Setup
 
-### GET /api/history
-Retrieve historical stock price data.
+### Prerequisites
+- Python 3.8+
+- pip
 
-**Parameters:**
-- `symbol` (string): Stock symbol (e.g., "AAPL", "RELIANCE")
-- `period` (string, optional): Time period (default: "1y")
-
-**Example:**
-```bash
-curl "http://localhost:5000/api/history?symbol=AAPL&period=1y"
-```
-
-### POST /api/train
-Train LSTM model for a specific stock.
-
-**Request Body:**
-```json
-{
-  "symbol": "AAPL",
-  "epochs": 50,
-  "start_date": "2023-01-01",
-  "end_date": "2024-01-01"
-}
-```
-
-### POST /api/predict
-Get predictions for a trained model.
-
-**Request Body:**
-```json
-{
-  "symbol": "AAPL",
-  "days": 30
-}
-```
-
-### GET /api/metrics
-Get model performance metrics.
-
-**Parameters:**
-- `symbol` (string): Stock symbol
-
-## Installation and Setup
-
-### Backend Setup
+### Installation
 
 1. Navigate to the backend directory:
 ```bash
-cd backend
+cd Stock_backend
 ```
 
 2. Create a virtual environment:
@@ -111,13 +75,63 @@ pip install -r requirements.txt
 python app.py
 ```
 
-The backend will be available at `http://localhost:5000`
+The backend will be available at `http://localhost:7860`
 
-### Frontend Setup
+### Backend API Endpoints
+
+#### GET /api/history
+Retrieve historical stock price data.
+
+**Parameters:**
+- `symbol` (string): Stock symbol (e.g., "RELIANCE.NS", "AAPL")
+- `period` (string, optional): Time period (default: "1y")
+
+**Example:**
+```bash
+curl "http://localhost:7860/api/history?symbol=RELIANCE.NS&period=1y"
+```
+
+#### POST /api/train
+Train LSTM model for a specific stock.
+
+**Request Body:**
+```json
+{
+  "symbol": "RELIANCE.NS",
+  "epochs": 20,
+  "start_date": "2023-01-01",
+  "end_date": "2024-01-01"
+}
+```
+
+#### POST /api/predict
+Get predictions for a trained model.
+
+**Request Body:**
+```json
+{
+  "symbol": "RELIANCE.NS",
+  "days": 30
+}
+```
+
+#### GET /api/metrics
+Get model performance metrics.
+
+**Parameters:**
+- `symbol` (string): Stock symbol
+
+## Frontend Setup
+
+### Prerequisites
+- Node.js 16+
+- npm
+
+### Installation
 
 1. Navigate to the frontend directory:
 ```bash
-cd frontend
+cd Stock_prediction_v2/frontend
 ```
 
 2. Install dependencies:
@@ -125,7 +139,12 @@ cd frontend
 npm install
 ```
 
-3. Start the development server:
+3. Create environment file:
+```bash
+echo REACT_APP_API_URL=http://localhost:7860 > .env
+```
+
+4. Start the development server:
 ```bash
 npm start
 ```
@@ -134,55 +153,92 @@ The frontend will be available at `http://localhost:3000`
 
 ## Usage
 
-1. **Select a Stock**: Use the stock selector to choose a stock symbol
-2. **Train Model**: Set training parameters (epochs, date range) and click "Train Model"
-3. **View Predictions**: After training, view the prediction chart showing historical vs predicted prices
-4. **Check Metrics**: Review model performance metrics
+### 1. Select a Stock
+- Use the stock selector to choose a stock symbol
+- For Indian stocks, use `.NS` suffix (e.g., `RELIANCE.NS`)
+- For US stocks, use simple symbols (e.g., `AAPL`)
+
+### 2. Train Model
+- Set training parameters:
+  - **Epochs**: Number of training iterations (5-100)
+  - **Start Date**: Optional start date for training data
+  - **End Date**: Optional end date for training data
+- Click "Train Model" to start training
+- Training may take several minutes depending on epochs
+
+### 3. View Predictions
+- After training, predictions will be displayed automatically
+- View the prediction chart showing historical vs predicted prices
+- Check the prediction summary for all features
+
+### 4. Model Features
+The system trains separate LSTM models for:
+- **Open Price**
+- **High Price**
+- **Low Price**
+- **Close Price**
+- **Volume**
+
+Plus a Neural Network aggregator for consolidated predictions.
+
+## Supported Stock Symbols
+
+### Indian Stocks (NSE)
+- RELIANCE.NS, TCS.NS, INFY.NS, HDFCBANK.NS, ICICIBANK.NS
+- HINDUNILVR.NS, ITC.NS, SBIN.NS, BHARTIARTL.NS, KOTAKBANK.NS
+- AXISBANK.NS, ASIANPAINT.NS, MARUTI.NS, HCLTECH.NS, SUNPHARMA.NS
+- WIPRO.NS, ULTRACEMCO.NS, TITAN.NS, BAJFINANCE.NS, NESTLEIND.NS
+
+### US Stocks
+- AAPL, GOOGL, MSFT, AMZN, TSLA, META, NVDA, NFLX
+- JPM, JNJ, V, PG, UNH, HD, MA, DIS, PYPL, ADBE
 
 ## Model Architecture
 
-The LSTM model uses:
-- **Input Features**: Open, High, Low, Close, Volume
+### LSTM Model
+- **Input**: Time series sequences (75 days)
 - **Architecture**: Bidirectional LSTM with dropout
-- **Output**: Multi-step prediction (default 30 days)
-- **Preprocessing**: MinMaxScaler normalization
-- **Training**: Adam optimizer with MSE loss
+- **Output**: Multi-step prediction (30 days)
+- **Features**: Open, High, Low, Close, Volume
+
+### Neural Network Aggregator
+- **Input**: Scaled feature predictions
+- **Architecture**: 3-layer feedforward network
+- **Output**: Consolidated Close price prediction
+- **Purpose**: Combine individual feature predictions
 
 ## Deployment
 
-### Option 1: Single Server Deployment
+### Backend Deployment (Render)
 
-1. Build the React frontend:
-```bash
-cd frontend
-npm run build
-```
+1. Push the `Stock_backend` folder to GitHub
+2. Create a new Web Service on Render
+3. Connect your GitHub repository
+4. Configure:
+   - **Root Directory**: (leave empty)
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python run.py`
+   - **Environment**: Python
 
-2. Copy the build folder to backend/static:
-```bash
-cp -r build ../backend/static
-```
+### Frontend Deployment (Vercel/Netlify)
 
-3. Deploy the backend to your server (Render, Railway, Heroku)
-
-### Option 2: Separate Services
-
-1. **Backend**: Deploy to Python-friendly platforms (Render, Railway, Heroku)
-2. **Frontend**: Deploy to Vercel, Netlify, or similar
-3. Update the frontend `.env` file with the backend URL
+1. Push the `Stock_prediction_v2/frontend` folder to GitHub
+2. Deploy to Vercel or Netlify
+3. Set environment variable:
+   - `REACT_APP_API_URL`: Your backend URL
 
 ## Environment Variables
 
 ### Frontend (.env)
 ```
-REACT_APP_API_URL=http://localhost:5000
+REACT_APP_API_URL=http://localhost:7860
 ```
 
 ### Backend
-Create a `.env` file in the backend directory:
+The backend uses a hardcoded Alpha Vantage API key for demonstration.
+For production, use environment variables:
 ```
-FLASK_ENV=development
-FLASK_DEBUG=1
+ALPHA_VANTAGE_API_KEY=your_api_key_here
 ```
 
 ## Dependencies
@@ -190,14 +246,12 @@ FLASK_DEBUG=1
 ### Backend
 - Flask==2.3.2
 - Flask-Cors==3.0.10
-- yfinance==0.2.26
+- alpha-vantage==2.3.1
 - pandas==2.1.1
 - numpy==1.26.0
 - scikit-learn==1.3.0
 - torch==2.0.1
 - waitress==2.1.2
-- gunicorn==21.2.0
-- python-dotenv==1.0.0
 
 ### Frontend
 - React 18
@@ -205,6 +259,21 @@ FLASK_DEBUG=1
 - Axios
 - Chart.js
 - react-chartjs-2
+
+## Troubleshooting
+
+### Common Issues
+
+1. **API Key Limit**: Alpha Vantage has rate limits. Use sparingly.
+2. **Training Time**: Higher epochs = longer training time.
+3. **Memory Issues**: Large datasets may require more RAM.
+4. **CORS Errors**: Ensure backend CORS is properly configured.
+
+### Error Messages
+
+- **"No data found"**: Check stock symbol format
+- **"Training failed"**: Reduce epochs or check data availability
+- **"Model not found"**: Train the model first before predicting
 
 ## Contributing
 

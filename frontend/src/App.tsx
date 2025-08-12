@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import StockSelector from './components/StockSelector';
 import TrainingControls, { TrainingParams } from './components/TrainingControls';
@@ -29,6 +29,18 @@ interface MetricsData {
   message: string;
 }
 
+interface JobStatus {
+  job_id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  progress: number;
+  message: string;
+  symbol: string;
+  epochs: number;
+  created_at: string;
+  result?: any;
+  error?: string;
+}
+
 function App() {
   const [selectedSymbol, setSelectedSymbol] = useState('RELIANCE.NS');
   const [historicalData, setHistoricalData] = useState<HistoricalData | null>(null);
@@ -37,6 +49,8 @@ function App() {
   const [isTraining, setIsTraining] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentJob, setCurrentJob] = useState<JobStatus | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch historical data when symbol changes
   useEffect(() => {
@@ -44,6 +58,15 @@ function App() {
       fetchHistoricalData();
     }
   }, [selectedSymbol]);
+
+  // Cleanup polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
 
   const fetchHistoricalData = async () => {
     try {
@@ -59,30 +82,79 @@ function App() {
     }
   };
 
+  const pollJobStatus = async (jobId: string) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/job-status/${jobId}`);
+      const jobStatus: JobStatus = response.data;
+      setCurrentJob(jobStatus);
+
+      if (jobStatus.status === 'completed') {
+        // Job completed successfully
+        setIsTraining(false);
+        setError(null);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        
+        // Fetch predictions and metrics after successful training
+        await fetchPredictions(jobStatus.symbol);
+        await fetchMetrics(jobStatus.symbol);
+        
+        console.log('Training completed:', jobStatus.result);
+        
+      } else if (jobStatus.status === 'failed') {
+        // Job failed
+        setIsTraining(false);
+        setError(`Training failed: ${jobStatus.error || 'Unknown error'}`);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        console.error('Training failed:', jobStatus.error);
+      }
+      // If status is 'pending' or 'running', continue polling
+      
+    } catch (err: any) {
+      console.error('Error polling job status:', err);
+      // Don't stop polling on network errors, just log them
+    }
+  };
+
   const handleTrain = async (params: TrainingParams) => {
     try {
       setIsTraining(true);
       setError(null);
+      setCurrentJob(null);
       
+      // Start the training job
       const response = await axios.post(`${API_BASE_URL}/api/train`, {
         symbol: params.symbol,
         epochs: params.epochs,
         start_date: params.startDate,
         end_date: params.endDate
       });
-      console.log('Training completed:', response.data);
       
-      // Fetch metrics after training
-      await fetchMetrics(params.symbol);
+      const { job_id } = response.data;
+      console.log('Training job started:', job_id);
       
-      // Fetch predictions after training
-      await fetchPredictions(params.symbol);
+      // Start polling for job status
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+      
+      // Poll every 2 seconds
+      pollingIntervalRef.current = setInterval(() => {
+        pollJobStatus(job_id);
+      }, 2000);
+      
+      // Initial status check
+      await pollJobStatus(job_id);
       
     } catch (err: any) {
-      setError(`Failed to train model: ${err.response?.data?.error || err.message}`);
-      console.error('Error training model:', err);
-    } finally {
       setIsTraining(false);
+      setError(`Failed to start training: ${err.response?.data?.error || err.message}`);
+      console.error('Error starting training:', err);
     }
   };
 
@@ -147,6 +219,23 @@ function App() {
             />
           </div>
         </div>
+
+        {/* Training Progress Display */}
+        {isTraining && currentJob && (
+          <div className="training-progress">
+            <h3>Training Progress</h3>
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{ width: `${currentJob.progress}%` }}
+              ></div>
+            </div>
+            <p className="progress-text">{currentJob.message}</p>
+            <p className="progress-details">
+              Status: {currentJob.status} | Progress: {currentJob.progress}%
+            </p>
+          </div>
+        )}
 
         {isLoading && (
           <div className="loading">

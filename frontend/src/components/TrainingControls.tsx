@@ -110,8 +110,11 @@ const TrainingControls: React.FC<TrainingControlsProps> = ({ onTrain, isTraining
         
         {isTraining && (
           <div style={{ marginTop: '1rem', textAlign: 'center', color: '#6b7280' }}>
-            <p>⏳ Training in progress... This may take a few minutes.</p>
+            <p>🚀 Training job started! Check the progress bar below.</p>
             <p>Training LSTM models for each feature (Open, High, Low, Close, Volume)</p>
+            <p style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              The training runs in the background. You can continue using the app while it trains.
+            </p>
           </div>
         )}
       </form>
