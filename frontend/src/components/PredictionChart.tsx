@@ -1,0 +1,171 @@
+import React from 'react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartOptions,
+  Filler // Import Filler for the 'fill' property
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler // Register the Filler plugin
+);
+
+interface PredictionChartProps {
+  historicalData: {
+    dates: string[];
+    close: number[];
+  };
+  predictions: {
+    dates: string[];
+    close: number[];
+  };
+  symbol: string;
+}
+
+const PredictionChart: React.FC<PredictionChartProps> = ({
+  historicalData,
+  predictions,
+  symbol
+}) => {
+  const options: ChartOptions<'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12,
+            weight: 'bold'
+          }
+        }
+      },
+      title: {
+        display: true,
+        text: `📈 ${symbol} Stock Price Prediction`,
+        font: {
+          family: 'Inter, sans-serif',
+          size: 18,
+          weight: 'bold'
+        },
+        color: '#2d3748'
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Date',
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12,
+            weight: 'bold'
+          },
+          color: '#4a5568'
+        },
+        grid: {
+          color: 'rgba(226, 232, 240, 0.5)'
+          // drawBorder has been removed
+        },
+        border: { // Correct property for the axis line
+          display: false
+        },
+        ticks: {
+          font: {
+            family: 'Inter, sans-serif',
+            size: 10
+          },
+          color: '#718096'
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'Price (₹)', // Assuming INR for Indian stocks
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12,
+            weight: 'bold'
+          },
+          color: '#4a5568'
+        },
+        grid: {
+          color: 'rgba(226, 232, 240, 0.5)'
+          // drawBorder has been removed
+        },
+        border: { // Correct property for the axis line
+          display: false
+        },
+        ticks: {
+          font: {
+            family: 'Inter, sans-serif',
+            size: 10
+          },
+          color: '#718096'
+        }
+      },
+    },
+  };
+
+  const data = {
+    labels: [...historicalData.dates, ...predictions.dates],
+    datasets: [
+      {
+        label: '📊 Historical Prices',
+        data: historicalData.close,
+        borderColor: '#4ecdc4',
+        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#4ecdc4',
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 2,
+        tension: 0.4,
+        fill: true
+      },
+      {
+        label: '🔮 Predicted Prices',
+        data: [...Array(historicalData.close.length).fill(null), ...predictions.close],
+        borderColor: '#667eea',
+        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        borderWidth: 2,
+        borderDash: [8, 4],
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: '#667eea',
+        pointHoverBorderColor: '#ffffff',
+        pointHoverBorderWidth: 2,
+        tension: 0.4,
+        fill: true
+      },
+    ],
+  };
+
+  return (
+    <div style={{ padding: '20px', backgroundColor: '#f7fafc', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+      <div style={{ position: 'relative', height: '450px' }}>
+        <Line options={options} data={data} />
+      </div>
+    </div>
+  );
+};
+
+export default PredictionChart;
