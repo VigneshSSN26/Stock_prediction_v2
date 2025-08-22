@@ -31,8 +31,21 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
 
                  <div className="header-right">
            <div className="header-actions">
+             <button className="action-button" title="Dashboard">
+               Dashboard
+             </button>
+             
+             <button className="action-button" title="Portfolio">
+               Portfolio
+             </button>
+             
+             <button className="action-button" title="Analytics">
+               Analytics
+             </button>
+             
              <button className="action-button" title="Notifications">
                <span className="notification-badge">3</span>
+               Notifications
              </button>
              
              <button className="action-button" title="Settings">

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import './Portfolio.css';
 
 interface PortfolioItem {
@@ -13,6 +14,7 @@ interface PortfolioItem {
 }
 
 const Portfolio: React.FC = () => {
+  const { user } = useAuth();
   const [portfolioItems] = useState<PortfolioItem[]>([
     {
       symbol: 'RELIANCE.NS',
@@ -63,7 +65,24 @@ const Portfolio: React.FC = () => {
   return (
     <div className="portfolio-container">
       <div className="portfolio-header">
-        <h2>My Portfolio</h2>
+        <div className="portfolio-title-section">
+          <h2>My Portfolio</h2>
+          <div className="portfolio-user-info">
+            <div className="portfolio-avatar">
+              {user?.avatar ? (
+                <img src={user.avatar} alt={user.name} />
+              ) : (
+                <div className="avatar-placeholder">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
+            </div>
+            <div className="user-details">
+              <span className="user-name">{user?.name || 'User'}</span>
+              <span className="user-email">{user?.email || 'user@example.com'}</span>
+            </div>
+          </div>
+        </div>
         <div className="portfolio-summary">
           <div className="summary-item">
             <span className="summary-label">Total Value</span>

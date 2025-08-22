@@ -74,7 +74,7 @@
   position: relative;
   background: none;
   border: none;
-  padding: 0.75rem;
+  padding: 0.75rem 1rem;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -82,12 +82,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  font-weight: 500;
+  font-size: 0.875rem;
+  gap: 0.5rem;
 }
 
 .action-button:hover {
   background: rgba(30, 58, 138, 0.1);
   color: #1e3a8a;
   transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.15);
+}
+
+.action-button.active {
+  background: rgba(30, 58, 138, 0.15);
+  color: #1e3a8a;
+  font-weight: 600;
 }
 
 .action-icon {
@@ -298,16 +308,21 @@
     font-size: 1.25rem;
   }
   
+  .header-actions {
+    gap: 0.5rem;
+  }
+  
+  .action-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  
   .user-info {
     display: none;
   }
   
   .user-button {
     padding: 0.25rem;
-  }
-  
-  .action-button {
-    padding: 0.5rem;
   }
   
   .user-menu {
@@ -322,11 +337,16 @@
   }
   
   .header-actions {
-    gap: 0.5rem;
+    gap: 0.25rem;
   }
   
   .action-button {
     padding: 0.5rem;
+    font-size: 0.625rem;
+  }
+  
+  .action-button:not(:last-child) {
+    display: none;
   }
   
   .user-menu {
