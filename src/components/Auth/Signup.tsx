@@ -30,21 +30,20 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin, isLoading, e
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <div className="auth-header">
-          <div className="auth-logo">
-            <div className="logo-icon">📈</div>
-          </div>
-          <h2>Create Account</h2>
-          <p>Join StockAI Predictor and start forecasting</p>
-        </div>
+                 <div className="auth-header">
+           <div className="auth-logo">
+             <div className="logo-icon">AI</div>
+           </div>
+           <h2>Create Account</h2>
+           <p>Join StockAI Predictor and start forecasting</p>
+         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {error && (
-            <div className="auth-error">
-              <span className="error-icon">⚠️</span>
-              {error}
-            </div>
-          )}
+                     {error && (
+             <div className="auth-error">
+               {error}
+             </div>
+           )}
 
           <div className="form-group">
             <label htmlFor="name">Full Name</label>
@@ -58,7 +57,7 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin, isLoading, e
                 required
                 disabled={isLoading}
               />
-              <span className="input-icon">👤</span>
+                             <span className="input-icon">Name</span>
             </div>
           </div>
 
@@ -74,7 +73,7 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin, isLoading, e
                 required
                 disabled={isLoading}
               />
-              <span className="input-icon">📧</span>
+                             <span className="input-icon">Email</span>
             </div>
           </div>
 
@@ -91,14 +90,14 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin, isLoading, e
                 disabled={isLoading}
                 minLength={8}
               />
-              <span className="input-icon">🔒</span>
+              <span className="input-icon">Password</span>
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
+                {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
             <div className="password-strength">
@@ -121,14 +120,14 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin, isLoading, e
                 required
                 disabled={isLoading}
               />
-              <span className="input-icon">🔒</span>
+              <span className="input-icon">Password</span>
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 disabled={isLoading}
               >
-                {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                {showConfirmPassword ? 'Hide' : 'Show'}
               </button>
             </div>
             {confirmPassword && password !== confirmPassword && (
@@ -173,16 +172,14 @@ const Signup: React.FC<SignupProps> = ({ onSignup, onSwitchToLogin, isLoading, e
           <span>or</span>
         </div>
 
-        <div className="social-auth">
-          <button className="social-button google">
-            <span className="social-icon">🔍</span>
-            Continue with Google
-          </button>
-          <button className="social-button github">
-            <span className="social-icon">🐙</span>
-            Continue with GitHub
-          </button>
-        </div>
+                 <div className="social-auth">
+           <button className="social-button google">
+             Continue with Google
+           </button>
+           <button className="social-button github">
+             Continue with GitHub
+           </button>
+         </div>
 
         <div className="auth-footer">
           <p>

@@ -21,21 +21,20 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup, isLoading, err
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <div className="auth-header">
-          <div className="auth-logo">
-            <div className="logo-icon">📈</div>
-          </div>
-          <h2>Welcome Back</h2>
-          <p>Sign in to your StockAI Predictor account</p>
-        </div>
+                 <div className="auth-header">
+           <div className="auth-logo">
+             <div className="logo-icon">AI</div>
+           </div>
+           <h2>Welcome Back</h2>
+           <p>Sign in to your StockAI Predictor account</p>
+         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {error && (
-            <div className="auth-error">
-              <span className="error-icon">⚠️</span>
-              {error}
-            </div>
-          )}
+                     {error && (
+             <div className="auth-error">
+               {error}
+             </div>
+           )}
 
           <div className="form-group">
             <label htmlFor="email">Email Address</label>
@@ -49,7 +48,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup, isLoading, err
                 required
                 disabled={isLoading}
               />
-              <span className="input-icon">📧</span>
+                             <span className="input-icon">Email</span>
             </div>
           </div>
 
@@ -65,14 +64,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup, isLoading, err
                 required
                 disabled={isLoading}
               />
-              <span className="input-icon">🔒</span>
+                             <span className="input-icon">Password</span>
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
+                                 {showPassword ? 'Hide' : 'Show'}
               </button>
             </div>
           </div>
@@ -106,16 +105,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToSignup, isLoading, err
           <span>or</span>
         </div>
 
-        <div className="social-auth">
-          <button className="social-button google">
-            <span className="social-icon">🔍</span>
-            Continue with Google
-          </button>
-          <button className="social-button github">
-            <span className="social-icon">🐙</span>
-            Continue with GitHub
-          </button>
-        </div>
+                 <div className="social-auth">
+           <button className="social-button google">
+             Continue with Google
+           </button>
+           <button className="social-button github">
+             Continue with GitHub
+           </button>
+         </div>
 
         <div className="auth-footer">
           <p>

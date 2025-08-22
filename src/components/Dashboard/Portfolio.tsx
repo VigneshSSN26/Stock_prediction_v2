@@ -106,11 +106,11 @@ const Portfolio: React.FC = () => {
         ))}
       </div>
 
-      <div className="portfolio-actions">
-        <button className="action-button primary">Add Stock</button>
-        <button className="action-button secondary">View Analytics</button>
-        <button className="action-button secondary">Export Data</button>
-      </div>
+             <div className="portfolio-actions">
+         <button className="action-button primary">Add Stock</button>
+         <button className="action-button secondary">Buy Analysis</button>
+         <button className="action-button secondary">Export Data</button>
+       </div>
     </div>
   );
 };

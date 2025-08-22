@@ -20,25 +20,24 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
     <header className="dashboard-header">
       <div className="header-content">
         <div className="header-left">
-          <div className="logo-section">
-            <div className="logo-icon">📈</div>
-            <div className="logo-text">
-              <h1>{title}</h1>
-              {subtitle && <p>{subtitle}</p>}
-            </div>
-          </div>
+                     <div className="logo-section">
+             <div className="logo-icon">AI</div>
+             <div className="logo-text">
+               <h1>{title}</h1>
+               {subtitle && <p>{subtitle}</p>}
+             </div>
+           </div>
         </div>
 
-        <div className="header-right">
-          <div className="header-actions">
-            <button className="action-button" title="Notifications">
-              <span className="action-icon">🔔</span>
-              <span className="notification-badge">3</span>
-            </button>
-            
-            <button className="action-button" title="Settings">
-              <span className="action-icon">⚙️</span>
-            </button>
+                 <div className="header-right">
+           <div className="header-actions">
+             <button className="action-button" title="Notifications">
+               <span className="notification-badge">3</span>
+             </button>
+             
+             <button className="action-button" title="Settings">
+               Settings
+             </button>
 
             <div className="user-profile">
               <button
@@ -82,31 +81,26 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
                     </div>
                   </div>
                   
-                  <div className="menu-items">
-                    <button className="menu-item">
-                      <span className="menu-icon">👤</span>
-                      Profile Settings
-                    </button>
-                    <button className="menu-item">
-                      <span className="menu-icon">🔒</span>
-                      Security
-                    </button>
-                    <button className="menu-item">
-                      <span className="menu-icon">📊</span>
-                      Analytics
-                    </button>
-                    <button className="menu-item">
-                      <span className="menu-icon">❓</span>
-                      Help & Support
-                    </button>
-                  </div>
-                  
-                  <div className="menu-divider"></div>
-                  
-                  <button className="menu-item logout" onClick={handleLogout}>
-                    <span className="menu-icon">🚪</span>
-                    Sign Out
-                  </button>
+                                     <div className="menu-items">
+                     <button className="menu-item">
+                       Profile Settings
+                     </button>
+                     <button className="menu-item">
+                       Security
+                     </button>
+                     <button className="menu-item">
+                       Analytics
+                     </button>
+                     <button className="menu-item">
+                       Help & Support
+                     </button>
+                   </div>
+                   
+                   <div className="menu-divider"></div>
+                   
+                   <button className="menu-item logout" onClick={handleLogout}>
+                     Sign Out
+                   </button>
                 </div>
               )}
             </div>
