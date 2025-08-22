@@ -33,6 +33,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
+        // For development: Comment out auto-login to always show login page
+        // Uncomment the lines below to enable auto-login
+        /*
         const token = localStorage.getItem('authToken');
         if (token) {
           // In a real app, you would validate the token with your backend
@@ -42,6 +45,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUser(JSON.parse(userData));
           }
         }
+        */
+        
+        // For development: Always start with no user logged in
+        setUser(null);
       } catch (err) {
         console.error('Error checking auth status:', err);
         localStorage.removeItem('authToken');

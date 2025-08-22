@@ -7,6 +7,7 @@ import StockSelector from './components/StockSelector';
 import TrainingControls, { TrainingParams } from './components/TrainingControls';
 import PredictionChart from './components/PredictionChart';
 import MetricsDisplay from './components/MetricsDisplay';
+import Portfolio from './components/Dashboard/Portfolio';
 import './App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7860';
@@ -250,6 +251,11 @@ const Dashboard: React.FC = () => {
               <p>Loading...</p>
             </div>
           )}
+
+          {/* Portfolio Section */}
+          <div className="dashboard-card">
+            <Portfolio />
+          </div>
 
           {historicalData && predictionData && (
             <div className="dashboard-card">
